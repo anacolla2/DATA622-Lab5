@@ -1,0 +1,2364 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Ames Housing Data with Trees</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="index_files/libs/clipboard/clipboard.min.js"></script>
+<script src="index_files/libs/quarto-html/quarto.js"></script>
+<script src="index_files/libs/quarto-html/popper.min.js"></script>
+<script src="index_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="index_files/libs/quarto-html/anchor.min.js"></script>
+<link href="index_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<script src="index_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="index_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="index_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview"><strong>Overview</strong></a>
+  <ul>
+  <li><a href="#problem-1-building-up-to-a-baseline-model" id="toc-problem-1-building-up-to-a-baseline-model" class="nav-link" data-scroll-target="#problem-1-building-up-to-a-baseline-model"><strong>Problem 1: Building up to a Baseline Model</strong></a>
+  <ul>
+  <li><a href="#basic-eda-and-feature-selection" id="toc-basic-eda-and-feature-selection" class="nav-link" data-scroll-target="#basic-eda-and-feature-selection"><strong>Basic EDA and Feature Selection:</strong></a>
+  <ul>
+  <li><a href="#variable-evaluation" id="toc-variable-evaluation" class="nav-link" data-scroll-target="#variable-evaluation">Variable evaluation:</a></li>
+  <li><a href="#nominal" id="toc-nominal" class="nav-link" data-scroll-target="#nominal">Nominal</a></li>
+  </ul></li>
+  <li><a href="#ordinal-discrete-continuous" id="toc-ordinal-discrete-continuous" class="nav-link" data-scroll-target="#ordinal-discrete-continuous">Ordinal, Discrete, Continuous</a>
+  <ul>
+  <li><a href="#test-split-and-log" id="toc-test-split-and-log" class="nav-link" data-scroll-target="#test-split-and-log">Test Split and Log</a></li>
+  </ul></li>
+  <li><a href="#baseline-model" id="toc-baseline-model" class="nav-link" data-scroll-target="#baseline-model"><strong>Baseline Model:</strong></a></li>
+  <li><a href="#ridge-model-and-fit" id="toc-ridge-model-and-fit" class="nav-link" data-scroll-target="#ridge-model-and-fit">Ridge Model and Fit</a></li>
+  <li><a href="#mse-and-important-features" id="toc-mse-and-important-features" class="nav-link" data-scroll-target="#mse-and-important-features">MSE and Important Features</a></li>
+  </ul></li>
+  <li><a href="#problem-2-decision-trees-and-random-forests" id="toc-problem-2-decision-trees-and-random-forests" class="nav-link" data-scroll-target="#problem-2-decision-trees-and-random-forests"><strong>Problem 2: Decision Trees and Random Forests</strong></a>
+  <ul>
+  <li><a href="#simple-decision-tree" id="toc-simple-decision-tree" class="nav-link" data-scroll-target="#simple-decision-tree"><strong>Simple Decision Tree:</strong></a></li>
+  <li><a href="#tree-pruning" id="toc-tree-pruning" class="nav-link" data-scroll-target="#tree-pruning"><strong>Tree Pruning:</strong></a></li>
+  <li><a href="#random-forests" id="toc-random-forests" class="nav-link" data-scroll-target="#random-forests"><strong>Random Forests:</strong></a></li>
+  <li><a href="#comparing-ridge-regression-and-random-forests" id="toc-comparing-ridge-regression-and-random-forests" class="nav-link" data-scroll-target="#comparing-ridge-regression-and-random-forests"><strong>Comparing Ridge Regression and Random Forests:</strong></a></li>
+  </ul></li>
+  <li><a href="#problem-3-boosting-learning-rate-and-tree-number" id="toc-problem-3-boosting-learning-rate-and-tree-number" class="nav-link" data-scroll-target="#problem-3-boosting-learning-rate-and-tree-number"><strong>Problem 3: Boosting: Learning Rate and Tree Number</strong></a></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Ames Housing Data with Trees</h1>
+<p class="subtitle lead">DATA622-Lab5</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div id="c886cc46" class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#--package load--</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn <span class="im">import</span> model_selection <span class="im">as</span> ms</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn <span class="im">import</span> preprocessing <span class="im">as</span> pp</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn <span class="im">import</span> compose</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn <span class="im">import</span> pipeline</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn <span class="im">import</span> linear_model</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn <span class="im">import</span> tree</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn <span class="im">import</span> ensemble</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn <span class="im">import</span> metrics</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="overview" class="level1">
+<h1><strong>Overview</strong></h1>
+<p>You have been given a dataset consisting of a single file, <code>AmesHousing.csv</code>, and a data dictionary <code>data-description.txt</code>. This dataset contains the sales price of each home as well as other attributes of the home and the sales transaction, such as the lot size, the square footage of each floor, when the home was built and remodeled, whether the kitchen is upgraded, etc. A data dictionary has been included with the data. During this lab, you will practice using different types of regression tree methods to predict housing prices in the data.</p>
+<p>This dataset is a model dataset for demonstrating machine learning techniques and for prediction. This dataset was downloaded from <a href="https://www.kaggle.com/competitions/home-data-for-ml-course/data">kaggle</a>, which holds periodic introductory competitions using this data, if you ever wanted to try your hand at kaggle competitions you could use this assignment to create your first entry. The dataset was originally compiled by De Cook for educational purposes. Skim this article for some tips on using this dataset: <a href="https://jse.amstat.org/v19n3/decock.pdf">De Cock 2011</a>. De Cook makes some suggestions for simplifying the data that you can take if you need to.</p>
+<p>The dataset and data dictionary are available here:</p>
+<ul>
+<li><p><a href="https://github.com/georgehagstrom/DATA622Spring2026/blob/main/website/assignments/labs/labData/AmesHousing.csv">AmesHousing.csv</a></p></li>
+<li><p><a href="https://jse.amstat.org/v19n3/decock/DataDocumentation.txt">data-description.txt</a></p></li>
+</ul>
+<blockquote class="blockquote">
+<p>Note: There is a lot of freedom in this exercise in terms of which variables you pick, some of the model choices, and also some hyperparameters. I have an expectation for what the answers will be in general, but you might get different answers depending on what you select and random chance. Report what you find, not what you expect to see (though if you see something unexpected it is a good hint to look for a mistake).</p>
+</blockquote>
+<div id="cdca28a8" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Data Import-- Keeping the recordered NA--</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>ames<span class="op">=</span> pd.read_csv(<span class="st">"https://raw.githubusercontent.com/georgehagstrom/DATA622Spring2026/refs/heads/main/website/assignments/labs/labData/AmesHousing.csv"</span>, keep_default_na<span class="op">=</span> <span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="c2147ada" class="cell" data-execution_count="3">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>ames.columns<span class="op">=</span>(ames.columns.<span class="bu">str</span>.strip().<span class="bu">str</span>.lower().<span class="bu">str</span>.replace(<span class="st">" "</span>, <span class="st">"_"</span>).<span class="bu">str</span>.strip())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="89999026" class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>ames.dtypes</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Although the NA values were preserved on import, there are blank observations in the data that were actually missing and not recorded.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="blanks_in_data.png" class="img-fluid figure-img"></p>
+<figcaption>Example image of mising datapoints</figcaption>
+</figure>
+</div>
+<p>The assignment introduction explains there are <u><strong>almost</strong></u> no real missing data. This is because the NA in the dataset are not identifying missing-ness, they mean a lack of a feature. Here NA means “None”.</p>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>ames.isna().<span class="bu">sum</span>().sort_values(ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">20</span>).to_frame(<span class="st">"NA"</span>).rename_axis(<span class="st">"feature"</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>(ames <span class="op">==</span> <span class="st">""</span>).<span class="bu">sum</span>().sort_values(ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">20</span>).to_frame(<span class="st">"Blanks"</span>).rename_axis(<span class="st">"feature"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="94b7a96f" class="cell quarto-layout-panel" data-layout-ncol="2" data-execution_count="5">
+<div class="quarto-layout-row">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Blanks</th>
+</tr>
+<tr class="odd">
+<th style="text-align: left;" data-quarto-table-cell-role="th">feature</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">lot_frontage</td>
+<td style="text-align: left;">490</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">garage_yr_blt</td>
+<td style="text-align: left;">159</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">mas_vnr_area</td>
+<td style="text-align: left;">23</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">mas_vnr_type</td>
+<td style="text-align: left;">23</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmt_exposure</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmt_full_bath</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmtfin_type_2</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">garage_finish</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmt_half_bath</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmtfin_sf_2</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmt_qual</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmt_cond</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">electrical</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmtfin_type_1</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmt_unf_sf</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">total_bsmt_sf</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">bsmtfin_sf_1</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">garage_area</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;" data-quarto-table-cell-role="th">garage_qual</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;" data-quarto-table-cell-role="th">garage_cars</td>
+<td style="text-align: left;">1</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>However, we also see that some of the variables were not imported with their appropriate data type. There are numerical datapoints that are literal blanks <code>" "</code>. Fixing the column types automatically change these to <code>NaN</code>, which will then be imputed.</p>
+<div id="e85814fe" class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Data type fix for numerical--</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>tonum<span class="op">=</span> [<span class="st">"lot_frontage"</span>,<span class="st">"mas_vnr_area"</span>, <span class="st">"bsmtfin_sf_1"</span>, <span class="st">"bsmtfin_sf_2"</span>, <span class="st">"bsmt_unf_sf"</span>, <span class="st">"total_bsmt_sf"</span>, <span class="st">"bsmt_full_bath"</span>, <span class="st">"bsmt_half_bath"</span>, <span class="st">"garage_yr_blt"</span>, <span class="st">"garage_cars"</span>, <span class="st">"garage_area"</span>]</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> tonum:</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  ames[col]<span class="op">=</span> pd.to_numeric(ames[col], errors<span class="op">=</span><span class="st">"coerce"</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  ames[col]<span class="op">=</span> (ames.groupby([<span class="st">"neighborhood"</span>])[col].transform(<span class="kw">lambda</span> x: x.fillna(x.median())))</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  ames[<span class="st">"lot_frontage"</span>]<span class="op">=</span> ames[<span class="st">"lot_frontage"</span>].fillna(ames[<span class="st">"lot_frontage"</span>].median())</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Categorical Imputation with modes--</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>cat_modes<span class="op">=</span> [<span class="st">"mas_vnr_type"</span>, <span class="st">"bsmt_exposure"</span>, <span class="st">"garage_finish"</span>, <span class="st">"bsmtfin_type_2"</span>,<span class="st">"electrical"</span>, <span class="st">"bsmtfin_type_1"</span>, <span class="st">"bsmt_cond"</span>, <span class="st">"bsmt_qual"</span>, <span class="st">"garage_qual"</span>, <span class="st">"garage_cond"</span>]</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> cat_modes:</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="co">#-- to avoid filling all NA--</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  blank_mask<span class="op">=</span> ames[col].astype(<span class="bu">str</span>).<span class="bu">str</span>.strip().eq(<span class="st">""</span>)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  ames.loc[blank_mask, col]<span class="op">=</span> np.nan</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  mode_val<span class="op">=</span> ames[col].mode(dropna<span class="op">=</span><span class="va">True</span>)[<span class="dv">0</span>]</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  ames.loc[blank_mask, col]<span class="op">=</span> mode_val</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Imputing by the median is most appropriate for the numerical variables. Their distribution is skewed and using the mean would be less accurate, favoring the skew tails. The imputation will to take into account the corresponding neighborhood of the houses (in consideration of the nuances between neighborhoods).</p>
+<p>The categorical blank rows were identified, modified to NaN and then imputed using the mode which is more appropriate for categorical.</p>
+<p>Example of skew:</p>
+<div id="874513f3" class="cell" data-execution_count="7">
+<div class="cell-output cell-output-stdout">
+<pre><code>The skewness value of `lot_frontage` is: 1.501</code></pre>
+</div>
+</div>
+<p>The identifier variables will be dropped because theyre not needed.</p>
+<div id="5c14cf3c" class="cell" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- variable removal--</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>identifiers<span class="op">=</span> [<span class="st">"pid"</span>, <span class="st">"order"</span>]</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>ames<span class="op">=</span> ames.drop(columns<span class="op">=</span> identifiers)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Finally, before going any further, outliers as specified by De Cock will be removed.</p>
+<blockquote class="blockquote">
+<p>I would recommend removing any houses with more than 4000 square feet from the data set (which eliminates these 5 unusual observations) before assigning it to students.</p>
+</blockquote>
+<div id="53424d06" class="cell" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>ames<span class="op">=</span> ames[ames[<span class="st">"gr_liv_area"</span>] <span class="op">&lt;</span> <span class="dv">4000</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<hr>
+<section id="problem-1-building-up-to-a-baseline-model" class="level2">
+<h2 class="anchored" data-anchor-id="problem-1-building-up-to-a-baseline-model"><strong>Problem 1: Building up to a Baseline Model</strong></h2>
+<section id="basic-eda-and-feature-selection" class="level3">
+<h3 class="anchored" data-anchor-id="basic-eda-and-feature-selection"><strong>Basic EDA and Feature Selection:</strong></h3>
+<p>Divide the data into an initial training and testing split. Perform a log-transform on the sales price, this will be the target variable. Perform a basic EDA to select features for your model. Report a summary of the EDA and the selection of variables for your model.</p>
+<blockquote class="blockquote">
+<p>(Hint: the quality variables are important, and your intuition about what is important in housing is useful for picking)</p>
+</blockquote>
+<p>Pick more than 10 variables but less than all 80 (before one-hot encoding). Several variables encode the absence of a feature (such as no pool, no garage, etc) as ‘NA’. This dataset has <strong>almost</strong> no real missing data- make sure to encode and interpret ‘NA’ values appropriately for the variables you select. Make sure ordered categorical features have an integer or ordinal encoding, and use one-hot encoding on remaining categorical features.</p>
+<section id="variable-evaluation" class="level4">
+<h4 class="anchored" data-anchor-id="variable-evaluation">Variable evaluation:</h4>
+<p>Organizing variables in a dataset such as this makes evaluating them a little easier.</p>
+<div id="b1685f25" class="cell" data-execution_count="10">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Nominal Variables-- </span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>nominal<span class="op">=</span> [<span class="st">"ms_subclass"</span>, <span class="st">"ms_zoning"</span>, <span class="st">"street"</span>, <span class="st">"alley"</span>, <span class="st">"land_contour"</span>, <span class="st">"lot_config"</span>, <span class="st">"neighborhood"</span>, <span class="st">"condition_1"</span>, <span class="st">"condition_2"</span>, <span class="st">"bldg_type"</span>, <span class="st">"house_style"</span>, <span class="st">"roof_style"</span>, <span class="st">"roof_matl"</span>, <span class="st">"exterior_1st"</span>, <span class="st">"exterior_2nd"</span>, <span class="st">"mas_vnr_type"</span>, <span class="st">"foundation"</span>, <span class="st">"heating"</span>, <span class="st">"central_air"</span>, <span class="st">"garage_type"</span>, <span class="st">"misc_feature"</span>, <span class="st">"sale_type"</span>, <span class="st">"sale_condition"</span>]</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Ordinal Variables--</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>ordinal<span class="op">=</span> [<span class="st">"lot_shape"</span>, <span class="st">"utilities"</span>, <span class="st">"land_slope"</span>, <span class="st">"overall_qual"</span>, <span class="st">"overall_cond"</span>, <span class="st">"exter_qual"</span>, <span class="st">"exter_cond"</span>, <span class="st">"bsmt_qual"</span>, <span class="st">"bsmt_cond"</span>, <span class="st">"bsmt_exposure"</span>, <span class="st">"bsmtfin_type_1"</span>, <span class="st">"bsmtfin_type_2"</span>, <span class="st">"heating_qc"</span>, <span class="st">"electrical"</span>, <span class="st">"kitchen_qual"</span>, <span class="st">"functional"</span>, <span class="st">"fireplace_qu"</span>, <span class="st">"garage_finish"</span>, <span class="st">"garage_qual"</span>, <span class="st">"garage_cond"</span>, <span class="st">"paved_drive"</span>, <span class="st">"pool_qc"</span>, <span class="st">"fence"</span>]</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Discrete Variables--</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>discrete<span class="op">=</span> [<span class="st">"bsmt_full_bath"</span>, <span class="st">"bsmt_half_bath"</span>, <span class="st">"full_bath"</span>, <span class="st">"half_bath"</span>, <span class="st">"bedroom_abvgr"</span>, <span class="st">"kitchen_abvgr"</span>, <span class="st">"totrms_abvgrd"</span>, <span class="st">"fireplaces"</span>, <span class="st">"garage_cars"</span>]</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Continuous Variables--</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>continuous<span class="op">=</span> [<span class="st">"lot_frontage"</span>, <span class="st">"lot_area"</span>, <span class="st">"mas_vnr_area"</span>, <span class="st">"bsmtfin_sf_1"</span>, <span class="st">"bsmtfin_sf_2"</span>, <span class="st">"bsmt_unf_sf"</span>, <span class="st">"total_bsmt_sf"</span>, <span class="st">"1st_flr_sf"</span>, <span class="st">"2nd_flr_sf"</span>, <span class="st">"low_qual_fin_sf"</span>, <span class="st">"garage_area"</span>, <span class="st">"wood_deck_sf"</span>, <span class="st">"open_porch_sf"</span>, <span class="st">"enclosed_porch"</span>, <span class="st">"3ssn_porch"</span>, <span class="st">"screen_porch"</span>, <span class="st">"pool_area"</span>, <span class="st">"misc_val"</span>]</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Time Variables--</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>time<span class="op">=</span> [<span class="st">"year_built"</span>, <span class="st">"year_remod/add"</span>, <span class="st">"garage_yr_blt"</span>, <span class="st">"mo_sold"</span>, <span class="st">"yr_sold"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="nominal" class="level4">
+<h4 class="anchored" data-anchor-id="nominal">Nominal</h4>
+<p>Nominal variables, because they are categorical but unorganized, are best in one-hot encoding for linear models. The ideal candidates won’t have high cardinality, which I’d arbitrarily say is &gt;20 variations, considering this dataset is only composed of 2,930 rows.</p>
+<div id="a03d3999" class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>pd.DataFrame(ames[nominal].nunique(dropna<span class="op">=</span><span class="va">False</span>).sort_values(ascending<span class="op">=</span> <span class="va">True</span>).to_frame(<span class="st">"unique"</span>).rename_axis(<span class="st">"variable"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="10">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">unique</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">variable</th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">street</td>
+<td>2</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">central_air</td>
+<td>2</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">alley</td>
+<td>3</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">land_contour</td>
+<td>4</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">mas_vnr_type</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">bldg_type</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">misc_feature</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">lot_config</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">foundation</td>
+<td>6</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">heating</td>
+<td>6</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">roof_style</td>
+<td>6</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">sale_condition</td>
+<td>6</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">roof_matl</td>
+<td>7</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">ms_zoning</td>
+<td>7</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">garage_type</td>
+<td>7</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">house_style</td>
+<td>8</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">condition_2</td>
+<td>8</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">condition_1</td>
+<td>9</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">sale_type</td>
+<td>10</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">exterior_1st</td>
+<td>16</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">ms_subclass</td>
+<td>16</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">exterior_2nd</td>
+<td>17</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">neighborhood</td>
+<td>28</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p><code>sale_condition</code> may be said to be downstream, but it will be kept because I don’t believe it will cause data leakage. Variables with two classes such as <code>street</code> and <code>central_air</code> should be recoded as binary. These are also the only variables in the entire data set to qualify in its raw state.</p>
+<p><code>exterior_1st</code>, <code>ms_subclass</code>, <code>exterior_2nd</code> are near the cutoff; <code>neighborhood</code> is above that cutoff. Predictor variables that have little variation in the classes they contain will probably not be useful for a model. Below is a visualization of the denominations within each variable:</p>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Assesing Variation in Categories-- </span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>midliner<span class="op">=</span> [<span class="st">"#8698F3"</span>,<span class="st">"#A7CE5B"</span>, <span class="st">"#95B3EE"</span>, <span class="st">"#D5D1C9"</span>, <span class="st">"#D0B8F1"</span>, <span class="st">"#FF767F"</span>]</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>sns.set_palette(midliner)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>sns.set_theme(style<span class="op">=</span><span class="st">"white"</span>, palette<span class="op">=</span> midliner)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> nominal:</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    plt.figure(figsize<span class="op">=</span>(<span class="dv">8</span>,<span class="dv">4</span>))</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    sns.countplot(data<span class="op">=</span>ames, x<span class="op">=</span>col)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    plt.title(col)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    plt.xticks(rotation<span class="op">=</span><span class="dv">45</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="84cdc2b8" class="cell quarto-layout-panel" data-layout-ncol="4" data-execution_count="12">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-1.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-2.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-3.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-4.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-5.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-6.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-7.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-8.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-9.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-10.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-11.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-12.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-13.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-14.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-15.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-16.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-17.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-18.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-19.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-20.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-21.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-22.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-13-output-23.png" class="img-fluid"></p>
+</div>
+</div>
+</div>
+<p>While rare categories can matter, sparse classes like what’s seen here likely contribute a negligible amount on the predictive power of a model or may just add noise. Variables like <code>roof_matl</code>, <code>condition_2</code>, are candidates for removal. These should not have predictive power and could just introduce noise.</p>
+<div id="226a8ca1" class="cell" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>ames<span class="op">=</span> ames.drop(columns<span class="op">=</span> [<span class="st">"roof_matl"</span>, <span class="st">"condition_2"</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="ordinal-discrete-continuous" class="level3">
+<h3 class="anchored" data-anchor-id="ordinal-discrete-continuous">Ordinal, Discrete, Continuous</h3>
+<p>The ordinal variables are ordered categories and work well with trees and its splits. In the case of housing, these are likely to have predictive information about price. Below, in the boxplot of <code>overall_qual</code> there is an observable hike in sale price. This variable is likely to have some predictive power.</p>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> ordinal:</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    plt.figure(figsize<span class="op">=</span>(<span class="dv">8</span>,<span class="dv">4</span>))</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    sns.boxplot(data<span class="op">=</span>ames, x<span class="op">=</span>col, y<span class="op">=</span> <span class="st">"saleprice"</span>)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    plt.title(col)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="64c3d8b8" class="cell quarto-layout-panel" data-layout-ncol="4" data-execution_count="14">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-1.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-2.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-3.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-4.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-5.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-6.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-7.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-8.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-9.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-10.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-11.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-12.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-13.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-14.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-15.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-16.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-17.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-18.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-19.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-20.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-21.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-22.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<p><img src="index_files/figure-html/cell-15-output-23.png" class="img-fluid"></p>
+</div>
+</div>
+</div>
+<p>The ordinal values must be mapped.</p>
+<p>For the rest of the variables with blanks that do already have an NA category.</p>
+<div id="db138c9e" class="cell" data-execution_count="15">
+<details class="code-fold">
+<summary>Mapping the ordinal variables</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Mappings--</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>quality5_m<span class="op">=</span> {<span class="st">"NA"</span>: <span class="dv">0</span>, <span class="st">"Po"</span>: <span class="dv">1</span>, <span class="st">"Fa"</span>: <span class="dv">2</span>, <span class="st">"TA"</span>: <span class="dv">3</span>, <span class="st">"Gd"</span>: <span class="dv">4</span>, <span class="st">"Ex"</span>: <span class="dv">5</span>}</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>lot_shape_m<span class="op">=</span> {<span class="st">"IR3"</span>: <span class="dv">0</span>, <span class="st">"IR2"</span>: <span class="dv">1</span>, <span class="st">"IR1"</span>: <span class="dv">2</span>, <span class="st">"Reg"</span>: <span class="dv">3</span>}</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>utilities_m<span class="op">=</span> {<span class="st">"NoSeWa"</span>: <span class="dv">0</span>, <span class="st">"NoSewr"</span>: <span class="dv">1</span>, <span class="st">"AllPub"</span>: <span class="dv">2</span>}</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>land_slope_m<span class="op">=</span> {<span class="st">"Sev"</span>: <span class="dv">0</span>, <span class="st">"Mod"</span>: <span class="dv">1</span>, <span class="st">"Gtl"</span>: <span class="dv">2</span>}</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>bsmt_exposure_m<span class="op">=</span> {<span class="st">"NA"</span>: <span class="dv">0</span>, <span class="st">"No"</span>: <span class="dv">1</span>, <span class="st">"Mn"</span>: <span class="dv">2</span>, <span class="st">"Av"</span>: <span class="dv">3</span>, <span class="st">"Gd"</span>: <span class="dv">4</span>}</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>bsmtfin_m<span class="op">=</span> {<span class="st">"NA"</span>: <span class="dv">0</span>, <span class="st">"Unf"</span>: <span class="dv">1</span>, <span class="st">"LwQ"</span>: <span class="dv">2</span>, <span class="st">"Rec"</span>: <span class="dv">3</span>, <span class="st">"BLQ"</span>: <span class="dv">4</span>, <span class="st">"ALQ"</span>: <span class="dv">5</span>, <span class="st">"GLQ"</span>: <span class="dv">6</span>}</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>electrical_m<span class="op">=</span> {<span class="st">"Mix"</span>: <span class="dv">1</span>, <span class="st">"FuseP"</span>: <span class="dv">2</span>, <span class="st">"FuseF"</span>: <span class="dv">3</span>, <span class="st">"FuseA"</span>: <span class="dv">4</span>, <span class="st">"SBrkr"</span>: <span class="dv">5</span>}</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>functional_m<span class="op">=</span> {<span class="st">"Sal"</span>: <span class="dv">0</span>, <span class="st">"Sev"</span>: <span class="dv">1</span>, <span class="st">"Maj2"</span>: <span class="dv">2</span>, <span class="st">"Maj1"</span>: <span class="dv">3</span>, <span class="st">"Mod"</span>: <span class="dv">4</span>, <span class="st">"Min2"</span>: <span class="dv">5</span>, <span class="st">"Min1"</span>: <span class="dv">6</span>, <span class="st">"Typ"</span>: <span class="dv">7</span>}</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>garage_finish_m<span class="op">=</span> {<span class="st">"NA"</span>: <span class="dv">0</span>, <span class="st">"Unf"</span>: <span class="dv">1</span>, <span class="st">"RFn"</span>: <span class="dv">2</span>, <span class="st">"Fin"</span>: <span class="dv">3</span>}</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>paved_drive_m<span class="op">=</span> {<span class="st">"N"</span>: <span class="dv">0</span>, <span class="st">"P"</span>: <span class="dv">1</span>, <span class="st">"Y"</span>: <span class="dv">2</span>}</span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>fence_m<span class="op">=</span> {<span class="st">"NA"</span>: <span class="dv">0</span>, <span class="st">"MnWw"</span>: <span class="dv">1</span>, <span class="st">"GdWo"</span>: <span class="dv">2</span>, <span class="st">"MnPrv"</span>: <span class="dv">3</span>, <span class="st">"GdPrv"</span>: <span class="dv">4</span>}</span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>mapping_dict<span class="op">=</span> {<span class="st">"lot_shape"</span>: lot_shape_m,</span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a><span class="st">"utilities"</span>: utilities_m, <span class="st">"land_slope"</span>: land_slope_m, <span class="st">"bsmt_exposure"</span>: bsmt_exposure_m, <span class="st">"bsmtfin_type_1"</span>: bsmtfin_m, <span class="st">"bsmtfin_type_2"</span>: bsmtfin_m, <span class="st">"electrical"</span>: electrical_m, <span class="st">"functional"</span>: functional_m, <span class="st">"garage_finish"</span>: garage_finish_m, <span class="st">"paved_drive"</span>: paved_drive_m, <span class="st">"fence"</span>: fence_m}</span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col, mapping <span class="kw">in</span> mapping_dict.items():</span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>    ames[col]<span class="op">=</span> ames[col].<span class="bu">map</span>(mapping)</span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>quality_v<span class="op">=</span> [<span class="st">"exter_qual"</span>, <span class="st">"exter_cond"</span>, <span class="st">"bsmt_qual"</span>, <span class="st">"bsmt_cond"</span>, <span class="st">"heating_qc"</span>, <span class="st">"kitchen_qual"</span>, <span class="st">"fireplace_qu"</span>, <span class="st">"garage_qual"</span>, <span class="st">"garage_cond"</span>, <span class="st">"pool_qc"</span>]</span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> quality_v:</span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a>    ames[col]<span class="op">=</span> ames[col].<span class="bu">map</span>(quality5_m)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>The ordinal values are now ordered. Next the data will be split for Training and Testting.</p>
+<p>Discrete and continuous variables receive a similar treatment in Tree based regression models because they have specific numerical values that can be partitioned. It determines at what point a variable is useful when prediction error is reduced. This means that time variables can also work well.</p>
+<section id="test-split-and-log" class="level4">
+<h4 class="anchored" data-anchor-id="test-split-and-log">Test Split and Log</h4>
+<div id="3a1427d2" class="cell" data-execution_count="16">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co">#--defining x and y--</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>x<span class="op">=</span> ames.drop(columns<span class="op">=</span><span class="st">"saleprice"</span>)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>y<span class="op">=</span> np.log(ames[<span class="st">"saleprice"</span>])</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="co">#--Train Test Split--</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>x_train, x_test, y_train, y_test<span class="op">=</span> ms.train_test_split(x, y, test_size<span class="op">=</span> <span class="fl">0.2</span>, random_state<span class="op">=</span> <span class="dv">646</span>)</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="co">#-- NA check-- </span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>x.isna().<span class="bu">sum</span>().sort_values(ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">30</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="15">
+<pre><code>ms_subclass       0
+ms_zoning         0
+lot_frontage      0
+lot_area          0
+street            0
+alley             0
+lot_shape         0
+land_contour      0
+utilities         0
+lot_config        0
+land_slope        0
+neighborhood      0
+condition_1       0
+bldg_type         0
+house_style       0
+overall_qual      0
+overall_cond      0
+year_built        0
+year_remod/add    0
+roof_style        0
+exterior_1st      0
+exterior_2nd      0
+mas_vnr_type      0
+mas_vnr_area      0
+exter_qual        0
+exter_cond        0
+foundation        0
+bsmt_qual         0
+bsmt_cond         0
+bsmt_exposure     0
+dtype: int64</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="baseline-model" class="level3">
+<h3 class="anchored" data-anchor-id="baseline-model"><strong>Baseline Model:</strong></h3>
+<p>Use ridge regression with cross-validation to fit a baseline model. Evaluate it on the test set. What is the mean squared error and what are the most important features in your linear model?</p>
+<div id="105c02c1" class="cell" data-execution_count="17">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>nominal<span class="op">=</span> [<span class="st">"ms_subclass"</span>, <span class="st">"ms_zoning"</span>, <span class="st">"street"</span>, <span class="st">"alley"</span>, <span class="st">"land_contour"</span>, <span class="st">"lot_config"</span>, <span class="st">"neighborhood"</span>, <span class="st">"condition_1"</span>, <span class="st">"bldg_type"</span>, <span class="st">"house_style"</span>, <span class="st">"roof_style"</span>, <span class="st">"exterior_1st"</span>, <span class="st">"exterior_2nd"</span>, <span class="st">"mas_vnr_type"</span>, <span class="st">"foundation"</span>, <span class="st">"heating"</span>, <span class="st">"central_air"</span>, <span class="st">"garage_type"</span>, <span class="st">"misc_feature"</span>, <span class="st">"sale_type"</span>, <span class="st">"sale_condition"</span>]</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>num<span class="op">=</span> x.columns.drop(nominal)</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>num_pipeline<span class="op">=</span> pipeline.Pipeline([(<span class="st">"scaler"</span>, pp.StandardScaler())])</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>cat_pipeline<span class="op">=</span> pipeline.Pipeline([(<span class="st">"onehot"</span>, pp.OneHotEncoder(handle_unknown<span class="op">=</span><span class="st">"ignore"</span>))])</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Preprocess--</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>preprocess<span class="op">=</span> compose.ColumnTransformer([(<span class="st">"num"</span>, num_pipeline, num), (<span class="st">"nominal"</span>, cat_pipeline, nominal)])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="ridge-model-and-fit" class="level3">
+<h3 class="anchored" data-anchor-id="ridge-model-and-fit">Ridge Model and Fit</h3>
+<div id="0b62b7ce" class="cell" data-execution_count="18">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Ridge Model--</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>ridge<span class="op">=</span> pipeline.Pipeline([(<span class="st">"preprocess"</span>, preprocess), (<span class="st">"ridge"</span>, linear_model.RidgeCV(alphas<span class="op">=</span>np.logspace(<span class="dv">0</span>, <span class="dv">2</span>, <span class="dv">100</span>)))])</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Fit--</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>ridge.fit(x_train, y_train)</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="co">#--Predict--</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>ridge_pred<span class="op">=</span> ridge.predict(x_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="mse-and-important-features" class="level3">
+<h3 class="anchored" data-anchor-id="mse-and-important-features">MSE and Important Features</h3>
+<div id="ac72398c" class="cell" data-execution_count="19">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>mse<span class="op">=</span> metrics.mean_squared_error(y_test, ridge_pred)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>rmse<span class="op">=</span> np.sqrt(mse)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"The Ridge Model MSE is: </span><span class="sc">{</span>mse<span class="sc">:.3f}</span><span class="ch">\n</span><span class="ss"> The RMSE is: </span><span class="sc">{</span>rmse<span class="sc">: .3f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>The Ridge Model MSE is: 0.016
+ The RMSE is:  0.125</code></pre>
+</div>
+</div>
+<p>The saleprice was converted to log before modeling because of variability in the data and its skew. Since the model is predicting logged prices we’ll undo this by running the inverse, to make the output more interpretable.</p>
+<div id="2002705e" class="cell" data-execution_count="20">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- unlogging prediction and test values--</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>pred_sp<span class="op">=</span> np.exp(ridge_pred)</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>actual_sp<span class="op">=</span> np.exp(y_test)</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="co">#--calculating MSE---</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>rmse_sp<span class="op">=</span> np.sqrt(metrics.mean_squared_error(actual_sp, pred_sp))</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Ridge Model `saleprice` Prediction is off by: $</span><span class="sc">{</span>rmse_sp<span class="sc">:,.2f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Ridge Model `saleprice` Prediction is off by: $21,225.64</code></pre>
+</div>
+</div>
+<p>The ridge model prediction error is about $21k, not unreasonable. The top 10 features in the dataset according to the ridge model are as follows:</p>
+<div id="e85560a5" class="cell" data-execution_count="21">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>features_rd<span class="op">=</span> ridge.named_steps[<span class="st">"preprocess"</span>].get_feature_names_out()</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>coefficients<span class="op">=</span> ridge.named_steps[<span class="st">"ridge"</span>].coef_</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>coef_rd<span class="op">=</span> pd.DataFrame({<span class="st">"feature"</span>: features_rd,<span class="st">"coefficient"</span>: coefficients})</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>coef_rd[<span class="st">"order_by_magnitudes"</span>]<span class="op">=</span> coef_rd[<span class="st">"coefficient"</span>].<span class="bu">abs</span>().<span class="bu">round</span>(<span class="dv">3</span>)</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>coef_rd<span class="op">=</span> coef_rd.sort_values(<span class="st">"order_by_magnitudes"</span>, ascending<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>coef_rd.head(<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="20">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">feature</th>
+<th data-quarto-table-cell-role="th">coefficient</th>
+<th data-quarto-table-cell-role="th">order_by_magnitudes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">5</td>
+<td>num__overall_qual</td>
+<td>0.076695</td>
+<td>0.077</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">26</td>
+<td>num__gr_liv_area</td>
+<td>0.075398</td>
+<td>0.075</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">220</td>
+<td>nominal__sale_condition_Abnorml</td>
+<td>-0.070729</td>
+<td>0.071</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">99</td>
+<td>nominal__neighborhood_Crawfor</td>
+<td>0.070838</td>
+<td>0.071</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">73</td>
+<td>nominal__ms_zoning_C (all)</td>
+<td>-0.063127</td>
+<td>0.063</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>num__year_built</td>
+<td>0.055921</td>
+<td>0.056</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">106</td>
+<td>nominal__neighborhood_MeadowV</td>
+<td>-0.047745</td>
+<td>0.048</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">152</td>
+<td>nominal__exterior_1st_BrkFace</td>
+<td>0.045867</td>
+<td>0.046</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">23</td>
+<td>num__1st_flr_sf</td>
+<td>0.045869</td>
+<td>0.046</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">6</td>
+<td>num__overall_cond</td>
+<td>0.046332</td>
+<td>0.046</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>According to the ridge model, overall home quality, above ground living area size, and the size of a second floor, a Crawford location, the year the home was built, the size of the ground floor, house condition, all increases a home’s sale price. One the other end, abnormal sale listings (such as foreclosures), commercial zoning classifications, or a Meadow Village location, negatively impacts a homes sale price in Ames.</p>
+</section>
+</section>
+<section id="problem-2-decision-trees-and-random-forests" class="level2">
+<h2 class="anchored" data-anchor-id="problem-2-decision-trees-and-random-forests"><strong>Problem 2: Decision Trees and Random Forests</strong></h2>
+<section id="simple-decision-tree" class="level3">
+<h3 class="anchored" data-anchor-id="simple-decision-tree"><strong>Simple Decision Tree:</strong></h3>
+<p>Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?</p>
+<div id="5fe64bbd" class="cell" data-execution_count="22">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co">#--Trees model-- </span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>tree_model<span class="op">=</span> pipeline.Pipeline([(<span class="st">"preprocess"</span>, preprocess), (<span class="st">"tree"</span>, tree.DecisionTreeRegressor(random_state<span class="op">=</span><span class="dv">646</span>))])</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Fit--</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>tree_model.fit(x_train, y_train)</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Predict--</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>tree_pred<span class="op">=</span> tree_model.predict(x_test)</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>tree_mse<span class="op">=</span> metrics.mean_squared_error(y_test, tree_pred)</span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>tree_rmse<span class="op">=</span> np.sqrt(tree_mse)</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"The Tree Model MSE is: </span><span class="sc">{</span>tree_mse<span class="sc">:.3f}</span><span class="ch">\n</span><span class="ss"> The RMSE is: </span><span class="sc">{</span>tree_rmse<span class="sc">: .3f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>The Tree Model MSE is: 0.037
+ The RMSE is:  0.193</code></pre>
+</div>
+</div>
+<div id="83187c51" class="cell" data-execution_count="23">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>pred_sp<span class="op">=</span> np.exp(tree_pred)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>actual_sp<span class="op">=</span> np.exp(y_test)</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co">#--calculating MSE---</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>tree_sp<span class="op">=</span> np.sqrt(metrics.mean_squared_error(actual_sp, pred_sp))</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Ridge Model `saleprice` Prediction is off by: $</span><span class="sc">{</span>tree_sp<span class="sc">:,.2f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Ridge Model `saleprice` Prediction is off by: $35,870.30</code></pre>
+</div>
+</div>
+<p>A Trees model output an MSE of 0.037. After converting its results for easier interpretation, the model’s predictions are off by about $36k which means its less accurate at predicting than the Ridge model.</p>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co">#--Ridge Fit--</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>ridge_train_pred<span class="op">=</span> ridge.predict(x_train)</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>ridge_train_mse<span class="op">=</span> metrics.mean_squared_error(y_train, ridge_train_pred)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>ridge_test_mse<span class="op">=</span> metrics.mean_squared_error(y_test, ridge_pred)</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Ridge Train MSE: </span><span class="sc">{</span>ridge_train_mse<span class="sc">:.3f}</span><span class="ss">"</span>)</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Ridge Test MSE: </span><span class="sc">{</span>ridge_test_mse<span class="sc">:.3f}</span><span class="ss">"</span>)</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Tree Fit--</span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>tree_train_pred<span class="op">=</span> tree_model.predict(x_train)</span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>tree_train_mse<span class="op">=</span> metrics.mean_squared_error(y_train, tree_train_pred)</span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>tree_test_mse<span class="op">=</span> metrics.mean_squared_error(y_test, tree_pred)</span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Tree Train MSE: </span><span class="sc">{</span>tree_train_mse<span class="sc">:.3f}</span><span class="ss">"</span>)</span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Tree Test MSE: </span><span class="sc">{</span>tree_test_mse<span class="sc">:.3f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="b2296879" class="cell quarto-layout-panel" data-layout-ncol="2" data-execution_count="24">
+<div class="quarto-layout-row">
+<div class="cell-output cell-output-stdout quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<pre><code>Ridge Train MSE: 0.010
+Ridge Test MSE: 0.016
+Tree Train MSE: 0.000
+Tree Test MSE: 0.037</code></pre>
+</div>
+</div>
+</div>
+<p>The trees model seems to be overfitting since the error is zero (a perfect score) on its training data but significantly worse on the test data.</p>
+</section>
+<section id="tree-pruning" class="level3">
+<h3 class="anchored" data-anchor-id="tree-pruning"><strong>Tree Pruning:</strong></h3>
+<p>Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE?</p>
+<div id="8e2efec4" class="cell" data-execution_count="25">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>x_train2<span class="op">=</span> preprocess.fit_transform(x_train)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>path<span class="op">=</span> tree.DecisionTreeRegressor(random_state<span class="op">=</span><span class="dv">646</span>).cost_complexity_pruning_path(x_train2, y_train)</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>cv_alpha<span class="op">=</span> path.ccp_alphas[:<span class="op">-</span><span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="c4f78fae" class="cell" data-execution_count="26">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Cross-validated pruning search--</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>pruned_pipe<span class="op">=</span> pipeline.Pipeline([(<span class="st">"preprocess"</span>, preprocess),(<span class="st">"tree"</span>, tree.DecisionTreeRegressor(random_state<span class="op">=</span><span class="dv">646</span>))])</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>prune_grid<span class="op">=</span> {<span class="st">"tree__ccp_alpha"</span>: cv_alpha}</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>prune_cv<span class="op">=</span> ms.GridSearchCV(pruned_pipe,prune_grid,cv<span class="op">=</span><span class="dv">5</span>,scoring<span class="op">=</span><span class="st">"neg_mean_squared_error"</span>)</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>prune_cv.fit(x_train, y_train)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="25">
+<style>#sk-container-id-1 {
+  /* Definition of color scheme common for light and dark mode */
+  --sklearn-color-text: #000;
+  --sklearn-color-text-muted: #666;
+  --sklearn-color-line: gray;
+  /* Definition of color scheme for unfitted estimators */
+  --sklearn-color-unfitted-level-0: #fff5e6;
+  --sklearn-color-unfitted-level-1: #f6e4d2;
+  --sklearn-color-unfitted-level-2: #ffe0b3;
+  --sklearn-color-unfitted-level-3: chocolate;
+  /* Definition of color scheme for fitted estimators */
+  --sklearn-color-fitted-level-0: #f0f8ff;
+  --sklearn-color-fitted-level-1: #d4ebff;
+  --sklearn-color-fitted-level-2: #b3dbfd;
+  --sklearn-color-fitted-level-3: cornflowerblue;
+
+  /* Specific color for light theme */
+  --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, white)));
+  --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-icon: #696969;
+
+  @media (prefers-color-scheme: dark) {
+    /* Redefinition of color scheme for dark theme */
+    --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, #111)));
+    --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-icon: #878787;
+  }
+}
+
+#sk-container-id-1 {
+  color: var(--sklearn-color-text);
+}
+
+#sk-container-id-1 pre {
+  padding: 0;
+}
+
+#sk-container-id-1 input.sk-hidden--visually {
+  border: 0;
+  clip: rect(1px 1px 1px 1px);
+  clip: rect(1px, 1px, 1px, 1px);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
+#sk-container-id-1 div.sk-dashed-wrapped {
+  border: 1px dashed var(--sklearn-color-line);
+  margin: 0 0.4em 0.5em 0.4em;
+  box-sizing: border-box;
+  padding-bottom: 0.4em;
+  background-color: var(--sklearn-color-background);
+}
+
+#sk-container-id-1 div.sk-container {
+  /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
+     but bootstrap.min.css set `[hidden] { display: none !important; }`
+     so we also need the `!important` here to be able to override the
+     default hidden behavior on the sphinx rendered scikit-learn.org.
+     See: https://github.com/scikit-learn/scikit-learn/issues/21755 */
+  display: inline-block !important;
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-text-repr-fallback {
+  display: none;
+}
+
+div.sk-parallel-item,
+div.sk-serial,
+div.sk-item {
+  /* draw centered vertical line to link estimators */
+  background-image: linear-gradient(var(--sklearn-color-text-on-default-background), var(--sklearn-color-text-on-default-background));
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position: center center;
+}
+
+/* Parallel-specific style estimator block */
+
+#sk-container-id-1 div.sk-parallel-item::after {
+  content: "";
+  width: 100%;
+  border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
+  flex-grow: 1;
+}
+
+#sk-container-id-1 div.sk-parallel {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background-color: var(--sklearn-color-background);
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-parallel-item {
+  display: flex;
+  flex-direction: column;
+}
+
+#sk-container-id-1 div.sk-parallel-item:first-child::after {
+  align-self: flex-end;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:last-child::after {
+  align-self: flex-start;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:only-child::after {
+  width: 0;
+}
+
+/* Serial-specific style estimator block */
+
+#sk-container-id-1 div.sk-serial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--sklearn-color-background);
+  padding-right: 1em;
+  padding-left: 1em;
+}
+
+
+/* Toggleable style: style used for estimator/Pipeline/ColumnTransformer box that is
+clickable and can be expanded/collapsed.
+- Pipeline and ColumnTransformer use this feature and define the default style
+- Estimators will overwrite some part of the style using the `sk-estimator` class
+*/
+
+/* Pipeline and ColumnTransformer style (default) */
+
+#sk-container-id-1 div.sk-toggleable {
+  /* Default theme specific background. It is overwritten whether we have a
+  specific estimator or a Pipeline/ColumnTransformer */
+  background-color: var(--sklearn-color-background);
+}
+
+/* Toggleable label */
+#sk-container-id-1 label.sk-toggleable__label {
+  cursor: pointer;
+  display: flex;
+  width: 100%;
+  margin-bottom: 0;
+  padding: 0.5em;
+  box-sizing: border-box;
+  text-align: center;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+#sk-container-id-1 label.sk-toggleable__label .caption {
+  font-size: 0.6rem;
+  font-weight: lighter;
+  color: var(--sklearn-color-text-muted);
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:before {
+  /* Arrow on the left of the label */
+  content: "▸";
+  float: left;
+  margin-right: 0.25em;
+  color: var(--sklearn-color-icon);
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
+  color: var(--sklearn-color-text);
+}
+
+/* Toggleable content - dropdown */
+
+#sk-container-id-1 div.sk-toggleable__content {
+  display: none;
+  text-align: left;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content pre {
+  margin: 0.2em;
+  border-radius: 0.25em;
+  color: var(--sklearn-color-text);
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted pre {
+  /* unfitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+  /* Expand drop-down */
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+  content: "▾";
+}
+
+/* Pipeline/ColumnTransformer-specific style */
+
+#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator-specific style */
+
+/* Colorize estimator box */
+#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label label.sk-toggleable__label,
+#sk-container-id-1 div.sk-label label {
+  /* The background is the default theme color */
+  color: var(--sklearn-color-text-on-default-background);
+}
+
+/* On hover, darken the color of the background */
+#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+/* Label box, darken color on hover, fitted */
+#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator label */
+
+#sk-container-id-1 div.sk-label label {
+  font-family: monospace;
+  font-weight: bold;
+  display: inline-block;
+  line-height: 1.2em;
+}
+
+#sk-container-id-1 div.sk-label-container {
+  text-align: center;
+}
+
+/* Estimator-specific */
+#sk-container-id-1 div.sk-estimator {
+  font-family: monospace;
+  border: 1px dotted var(--sklearn-color-border-box);
+  border-radius: 0.25em;
+  box-sizing: border-box;
+  margin-bottom: 0.5em;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+/* on hover */
+#sk-container-id-1 div.sk-estimator:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Specification for estimator info (e.g. "i" and "?") */
+
+/* Common style for "i" and "?" */
+
+.sk-estimator-doc-link,
+a:link.sk-estimator-doc-link,
+a:visited.sk-estimator-doc-link {
+  float: right;
+  font-size: smaller;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1em;
+  height: 1em;
+  width: 1em;
+  text-decoration: none !important;
+  margin-left: 0.5em;
+  text-align: center;
+  /* unfitted */
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+  color: var(--sklearn-color-unfitted-level-1);
+}
+
+.sk-estimator-doc-link.fitted,
+a:link.sk-estimator-doc-link.fitted,
+a:visited.sk-estimator-doc-link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+div.sk-estimator:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover,
+div.sk-label-container:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+div.sk-estimator.fitted:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover,
+div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+/* Span, style for the box shown on hovering the info icon */
+.sk-estimator-doc-link span {
+  display: none;
+  z-index: 9999;
+  position: relative;
+  font-weight: normal;
+  right: .2ex;
+  padding: .5ex;
+  margin: .5ex;
+  width: min-content;
+  min-width: 20ex;
+  max-width: 50ex;
+  color: var(--sklearn-color-text);
+  box-shadow: 2pt 2pt 4pt #999;
+  /* unfitted */
+  background: var(--sklearn-color-unfitted-level-0);
+  border: .5pt solid var(--sklearn-color-unfitted-level-3);
+}
+
+.sk-estimator-doc-link.fitted span {
+  /* fitted */
+  background: var(--sklearn-color-fitted-level-0);
+  border: var(--sklearn-color-fitted-level-3);
+}
+
+.sk-estimator-doc-link:hover span {
+  display: block;
+}
+
+/* "?"-specific style due to the `<a>` HTML tag */
+
+#sk-container-id-1 a.estimator_doc_link {
+  float: right;
+  font-size: 1rem;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1rem;
+  height: 1rem;
+  width: 1rem;
+  text-decoration: none;
+  /* unfitted */
+  color: var(--sklearn-color-unfitted-level-1);
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+#sk-container-id-1 a.estimator_doc_link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+}
+
+.estimator-table summary {
+    padding: .5rem;
+    font-family: monospace;
+    cursor: pointer;
+}
+
+.estimator-table details[open] {
+    padding-left: 0.1rem;
+    padding-right: 0.1rem;
+    padding-bottom: 0.3rem;
+}
+
+.estimator-table .parameters-table {
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.estimator-table .parameters-table tr:nth-child(odd) {
+    background-color: #fff;
+}
+
+.estimator-table .parameters-table tr:nth-child(even) {
+    background-color: #f6f6f6;
+}
+
+.estimator-table .parameters-table tr:hover {
+    background-color: #e0e0e0;
+}
+
+.estimator-table table td {
+    border: 1px solid rgba(106, 105, 104, 0.232);
+}
+
+.user-set td {
+    color:rgb(255, 94, 0);
+    text-align: left;
+}
+
+.user-set td.value pre {
+    color:rgb(255, 94, 0) !important;
+    background-color: transparent !important;
+}
+
+.default td {
+    color: black;
+    text-align: left;
+}
+
+.user-set td i,
+.default td i {
+    color: black;
+}
+
+.copy-paste-icon {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48IS0tIUZvbnQgQXdlc29tZSBGcmVlIDYuNy4yIGJ5IEBmb250YXdlc29tZSAtIGh0dHBzOi8vZm9udGF3ZXNvbWUuY29tIExpY2Vuc2UgLSBodHRwczovL2ZvbnRhd2Vzb21lLmNvbS9saWNlbnNlL2ZyZWUgQ29weXJpZ2h0IDIwMjUgRm9udGljb25zLCBJbmMuLS0+PHBhdGggZD0iTTIwOCAwTDMzMi4xIDBjMTIuNyAwIDI0LjkgNS4xIDMzLjkgMTQuMWw2Ny45IDY3LjljOSA5IDE0LjEgMjEuMiAxNC4xIDMzLjlMNDQ4IDMzNmMwIDI2LjUtMjEuNSA0OC00OCA0OGwtMTkyIDBjLTI2LjUgMC00OC0yMS41LTQ4LTQ4bDAtMjg4YzAtMjYuNSAyMS41LTQ4IDQ4LTQ4ek00OCAxMjhsODAgMCAwIDY0LTY0IDAgMCAyNTYgMTkyIDAgMC0zMiA2NCAwIDAgNDhjMCAyNi41LTIxLjUgNDgtNDggNDhMNDggNTEyYy0yNi41IDAtNDgtMjEuNS00OC00OEwwIDE3NmMwLTI2LjUgMjEuNS00OCA0OC00OHoiLz48L3N2Zz4=);
+    background-repeat: no-repeat;
+    background-size: 14px 14px;
+    background-position: 0;
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>GridSearchCV(cv=5,
+             estimator=Pipeline(steps=[('preprocess',
+                                        ColumnTransformer(transformers=[('num',
+                                                                         Pipeline(steps=[('scaler',
+                                                                                          StandardScaler())]),
+                                                                         Index(['lot_frontage', 'lot_area', 'lot_shape', 'utilities', 'land_slope',
+       'overall_qual', 'overall_cond', 'year_built', 'year_remod/add',
+       'mas_vnr_area', 'exter_qual', 'exter_cond', 'bsmt_qual', 'bsmt_cond',
+       'bsmt_exposu...
+                                                                          'exterior_2nd',
+                                                                          'mas_vnr_type',
+                                                                          'foundation',
+                                                                          'heating',
+                                                                          'central_air',
+                                                                          'garage_type',
+                                                                          'misc_feature',
+                                                                          'sale_type',
+                                                                          'sale_condition'])])),
+                                       ('tree',
+                                        DecisionTreeRegressor(random_state=646))]),
+             param_grid={'tree__ccp_alpha': array([0.00000000e+00, 2.42920593e-17, 2.42920593e-17, ...,
+       7.59064599e-03, 1.29956345e-02, 1.43732127e-02], shape=(2210,))},
+             scoring='neg_mean_squared_error')</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br>On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden=""><div class="sk-item sk-dashed-wrapped"><div class="sk-label-container"><div class="sk-label fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox"><label for="sk-estimator-id-1" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>GridSearchCV</div></div><div><a class="sk-estimator-doc-link fitted" rel="noreferrer" target="_blank" href="https://scikit-learn.org/1.7/modules/generated/sklearn.model_selection.GridSearchCV.html">?<span>Documentation for GridSearchCV</span></a><span class="sk-estimator-doc-link fitted">i<span>Fitted</span></span></div></label><div class="sk-toggleable__content fitted" data-param-prefix="">
+        <div class="estimator-table">
+            <details>
+                <summary>Parameters</summary>
+                
+<table class="parameters-table caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<tbody>
+<tr class="odd user-set">
+<td><em></em></td>
+<td class="param">estimator&nbsp;</td>
+<td class="value">Pipeline(step..._state=646))])</td>
+</tr>
+<tr class="even user-set">
+<td><em></em></td>
+<td class="param">param_grid&nbsp;</td>
+<td class="value">{'tree__ccp_alpha': array([0.0000...shape=(2210,))}</td>
+</tr>
+<tr class="odd user-set">
+<td><em></em></td>
+<td class="param">scoring&nbsp;</td>
+<td class="value">'neg_mean_squared_error'</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">n_jobs&nbsp;</td>
+<td class="value">None</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">refit&nbsp;</td>
+<td class="value">True</td>
+</tr>
+<tr class="even user-set">
+<td><em></em></td>
+<td class="param">cv&nbsp;</td>
+<td class="value">5</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">verbose&nbsp;</td>
+<td class="value">0</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">pre_dispatch&nbsp;</td>
+<td class="value">'2*n_jobs'</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">error_score&nbsp;</td>
+<td class="value">nan</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">return_train_score&nbsp;</td>
+<td class="value">False</td>
+</tr>
+</tbody>
+</table>
+
+            </details>
+        </div>
+    </div></div></div><div class="sk-parallel"><div class="sk-parallel-item"><div class="sk-item"><div class="sk-label-container"><div class="sk-label fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox"><label for="sk-estimator-id-2" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>best_estimator_: Pipeline</div></div></label><div class="sk-toggleable__content fitted" data-param-prefix="best_estimator___"></div></div><div class="sk-serial"><div class="sk-item"><div class="sk-serial"><div class="sk-item sk-dashed-wrapped"><div class="sk-label-container"><div class="sk-label fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-3" type="checkbox"><label for="sk-estimator-id-3" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>preprocess: ColumnTransformer</div></div><div><a class="sk-estimator-doc-link fitted" rel="noreferrer" target="_blank" href="https://scikit-learn.org/1.7/modules/generated/sklearn.compose.ColumnTransformer.html">?<span>Documentation for preprocess: ColumnTransformer</span></a></div></label><div class="sk-toggleable__content fitted" data-param-prefix="best_estimator___preprocess__">
+        <div class="estimator-table">
+            <details>
+                <summary>Parameters</summary>
+                
+<table class="parameters-table caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<tbody>
+<tr class="odd user-set">
+<td><em></em></td>
+<td class="param">transformers&nbsp;</td>
+<td class="value">[('num', ...), ('nominal', ...)]</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">remainder&nbsp;</td>
+<td class="value">'drop'</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">sparse_threshold&nbsp;</td>
+<td class="value">0.3</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">n_jobs&nbsp;</td>
+<td class="value">None</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">transformer_weights&nbsp;</td>
+<td class="value">None</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">verbose&nbsp;</td>
+<td class="value">False</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">verbose_feature_names_out&nbsp;</td>
+<td class="value">True</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">force_int_remainder_cols&nbsp;</td>
+<td class="value">'deprecated'</td>
+</tr>
+</tbody>
+</table>
+
+            </details>
+        </div>
+    </div></div></div><div class="sk-parallel"><div class="sk-parallel-item"><div class="sk-item"><div class="sk-label-container"><div class="sk-label fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-4" type="checkbox"><label for="sk-estimator-id-4" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>num</div></div></label><div class="sk-toggleable__content fitted" data-param-prefix="best_estimator___preprocess__num__"><pre>Index(['lot_frontage', 'lot_area', 'lot_shape', 'utilities', 'land_slope',
+       'overall_qual', 'overall_cond', 'year_built', 'year_remod/add',
+       'mas_vnr_area', 'exter_qual', 'exter_cond', 'bsmt_qual', 'bsmt_cond',
+       'bsmt_exposure', 'bsmtfin_type_1', 'bsmtfin_sf_1', 'bsmtfin_type_2',
+       'bsmtfin_sf_2', 'bsmt_unf_sf', 'total_bsmt_sf', 'heating_qc',
+       'electrical', '1st_flr_sf', '2nd_flr_sf', 'low_qual_fin_sf',
+       'gr_liv_area', 'bsmt_full_bath', 'bsmt_half_bath', 'full_bath',
+       'half_bath', 'bedroom_abvgr', 'kitchen_abvgr', 'kitchen_qual',
+       'totrms_abvgrd', 'functional', 'fireplaces', 'fireplace_qu',
+       'garage_yr_blt', 'garage_finish', 'garage_cars', 'garage_area',
+       'garage_qual', 'garage_cond', 'paved_drive', 'wood_deck_sf',
+       'open_porch_sf', 'enclosed_porch', '3ssn_porch', 'screen_porch',
+       'pool_area', 'pool_qc', 'fence', 'misc_val', 'mo_sold', 'yr_sold'],
+      dtype='object')</pre></div></div></div><div class="sk-serial"><div class="sk-item"><div class="sk-serial"><div class="sk-item"><div class="sk-estimator fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-5" type="checkbox"><label for="sk-estimator-id-5" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>StandardScaler</div></div><div><a class="sk-estimator-doc-link fitted" rel="noreferrer" target="_blank" href="https://scikit-learn.org/1.7/modules/generated/sklearn.preprocessing.StandardScaler.html">?<span>Documentation for StandardScaler</span></a></div></label><div class="sk-toggleable__content fitted" data-param-prefix="best_estimator___preprocess__num__scaler__">
+        <div class="estimator-table">
+            <details>
+                <summary>Parameters</summary>
+                
+<table class="parameters-table caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<tbody>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">copy&nbsp;</td>
+<td class="value">True</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">with_mean&nbsp;</td>
+<td class="value">True</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">with_std&nbsp;</td>
+<td class="value">True</td>
+</tr>
+</tbody>
+</table>
+
+            </details>
+        </div>
+    </div></div></div></div></div></div></div></div><div class="sk-parallel-item"><div class="sk-item"><div class="sk-label-container"><div class="sk-label fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-6" type="checkbox"><label for="sk-estimator-id-6" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>nominal</div></div></label><div class="sk-toggleable__content fitted" data-param-prefix="best_estimator___preprocess__nominal__"><pre>['ms_subclass', 'ms_zoning', 'street', 'alley', 'land_contour', 'lot_config', 'neighborhood', 'condition_1', 'bldg_type', 'house_style', 'roof_style', 'exterior_1st', 'exterior_2nd', 'mas_vnr_type', 'foundation', 'heating', 'central_air', 'garage_type', 'misc_feature', 'sale_type', 'sale_condition']</pre></div></div></div><div class="sk-serial"><div class="sk-item"><div class="sk-serial"><div class="sk-item"><div class="sk-estimator fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-7" type="checkbox"><label for="sk-estimator-id-7" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>OneHotEncoder</div></div><div><a class="sk-estimator-doc-link fitted" rel="noreferrer" target="_blank" href="https://scikit-learn.org/1.7/modules/generated/sklearn.preprocessing.OneHotEncoder.html">?<span>Documentation for OneHotEncoder</span></a></div></label><div class="sk-toggleable__content fitted" data-param-prefix="best_estimator___preprocess__nominal__onehot__">
+        <div class="estimator-table">
+            <details>
+                <summary>Parameters</summary>
+                
+<table class="parameters-table caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<tbody>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">categories&nbsp;</td>
+<td class="value">'auto'</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">drop&nbsp;</td>
+<td class="value">None</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">sparse_output&nbsp;</td>
+<td class="value">True</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">dtype&nbsp;</td>
+<td class="value">&lt;class 'numpy.float64'&gt;</td>
+</tr>
+<tr class="odd user-set">
+<td><em></em></td>
+<td class="param">handle_unknown&nbsp;</td>
+<td class="value">'ignore'</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">min_frequency&nbsp;</td>
+<td class="value">None</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">max_categories&nbsp;</td>
+<td class="value">None</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">feature_name_combiner&nbsp;</td>
+<td class="value">'concat'</td>
+</tr>
+</tbody>
+</table>
+
+            </details>
+        </div>
+    </div></div></div></div></div></div></div></div></div></div><div class="sk-item"><div class="sk-estimator fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-8" type="checkbox"><label for="sk-estimator-id-8" class="sk-toggleable__label fitted sk-toggleable__label-arrow"><div><div>DecisionTreeRegressor</div></div><div><a class="sk-estimator-doc-link fitted" rel="noreferrer" target="_blank" href="https://scikit-learn.org/1.7/modules/generated/sklearn.tree.DecisionTreeRegressor.html">?<span>Documentation for DecisionTreeRegressor</span></a></div></label><div class="sk-toggleable__content fitted" data-param-prefix="best_estimator___tree__">
+        <div class="estimator-table">
+            <details>
+                <summary>Parameters</summary>
+                
+<table class="parameters-table caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<tbody>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">criterion&nbsp;</td>
+<td class="value">'squared_error'</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">splitter&nbsp;</td>
+<td class="value">'best'</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">max_depth&nbsp;</td>
+<td class="value">None</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">min_samples_split&nbsp;</td>
+<td class="value">2</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">min_samples_leaf&nbsp;</td>
+<td class="value">1</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">min_weight_fraction_leaf&nbsp;</td>
+<td class="value">0.0</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">max_features&nbsp;</td>
+<td class="value">None</td>
+</tr>
+<tr class="even user-set">
+<td><em></em></td>
+<td class="param">random_state&nbsp;</td>
+<td class="value">646</td>
+</tr>
+<tr class="odd default">
+<td><em></em></td>
+<td class="param">max_leaf_nodes&nbsp;</td>
+<td class="value">None</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">min_impurity_decrease&nbsp;</td>
+<td class="value">0.0</td>
+</tr>
+<tr class="odd user-set">
+<td><em></em></td>
+<td class="param">ccp_alpha&nbsp;</td>
+<td class="value">np.float64(9....005294675e-05)</td>
+</tr>
+<tr class="even default">
+<td><em></em></td>
+<td class="param">monotonic_cst&nbsp;</td>
+<td class="value">None</td>
+</tr>
+</tbody>
+</table>
+
+            </details>
+        </div>
+    </div></div></div></div></div></div></div></div></div></div></div></div><script>function copyToClipboard(text, element) {
+    // Get the parameter prefix from the closest toggleable content
+    const toggleableContent = element.closest('.sk-toggleable__content');
+    const paramPrefix = toggleableContent ? toggleableContent.dataset.paramPrefix : '';
+    const fullParamName = paramPrefix ? `${paramPrefix}${text}` : text;
+
+    const originalStyle = element.style;
+    const computedStyle = window.getComputedStyle(element);
+    const originalWidth = computedStyle.width;
+    const originalHTML = element.innerHTML.replace('Copied!', '');
+
+    navigator.clipboard.writeText(fullParamName)
+        .then(() => {
+            element.style.width = originalWidth;
+            element.style.color = 'green';
+            element.innerHTML = "Copied!";
+
+            setTimeout(() => {
+                element.innerHTML = originalHTML;
+                element.style = originalStyle;
+            }, 2000);
+        })
+        .catch(err => {
+            console.error('Failed to copy:', err);
+            element.style.color = 'red';
+            element.innerHTML = "Failed!";
+            setTimeout(() => {
+                element.innerHTML = originalHTML;
+                element.style = originalStyle;
+            }, 2000);
+        });
+    return false;
+}
+
+document.querySelectorAll('.fa-regular.fa-copy').forEach(function(element) {
+    const toggleableContent = element.closest('.sk-toggleable__content');
+    const paramPrefix = toggleableContent ? toggleableContent.dataset.paramPrefix : '';
+    const paramName = element.parentElement.nextElementSibling.textContent.trim();
+    const fullParamName = paramPrefix ? `${paramPrefix}${paramName}` : paramName;
+
+    element.setAttribute('title', fullParamName);
+});
+</script>
+</div>
+</div>
+<div id="fb515ef4" class="cell" data-execution_count="27">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>pruned_pred<span class="op">=</span> prune_cv.predict(x_test)</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>pruned_mse<span class="op">=</span> metrics.mean_squared_error(y_test, pruned_pred)</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Best alpha: </span><span class="sc">{</span>prune_cv<span class="sc">.</span>best_params_[<span class="st">'tree__ccp_alpha'</span>]<span class="sc">:.5f}</span><span class="ss">"</span>)</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Pruned Tree Test MSE: </span><span class="sc">{</span>pruned_mse<span class="sc">:.3f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Best alpha: 0.00010
+Pruned Tree Test MSE: 0.031</code></pre>
+</div>
+</div>
+<p>Pruning reduced the mean squared error by about 0.005, but the model remains less accurate than the Ridge model.</p>
+</div></section>
+<section id="random-forests" class="level3">
+<h3 class="anchored" data-anchor-id="random-forests"><strong>Random Forests:</strong></h3>
+<p>Use random forest to model this data. Use <code>GridSearchCV</code> and at least 5-fold cross-validation to find the optimal value of <code>max_features</code>. Plot the predicted test error using the <code>cv_results_["mean_test_score"]</code> of your cross-validated model, and describe the effect of <code>max_features</code> on the error rate. Where does the optimal value fall in comparison? What test MSE do you obtain? Use the <code>feature_importance_</code> values to determine which variables are most important.</p>
+<div id="b5276c90" class="cell" data-execution_count="28">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>x_train2<span class="op">=</span> preprocess.fit_transform(x_train)</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>preds<span class="op">=</span> x_train2.shape[<span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="29c59ca0" class="cell" data-execution_count="29">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co">#--features grid--</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>mf_grid<span class="op">=</span> [<span class="bu">int</span>(np.sqrt(preds)), <span class="bu">int</span>(preds<span class="op">/</span> <span class="dv">4</span>), <span class="bu">int</span>(preds<span class="op">/</span> <span class="dv">3</span>), <span class="bu">int</span>(preds<span class="op">/</span> <span class="dv">2</span>), preds]</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>mf_grid<span class="op">=</span> <span class="bu">sorted</span>(<span class="bu">list</span>(<span class="bu">set</span>(mf_grid)))</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>mf_grid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="28">
+<pre><code>[15, 56, 75, 113, 226]</code></pre>
+</div>
+</div>
+<div id="831bcf42" class="cell" data-execution_count="30">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Random Forest--</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>rf<span class="op">=</span> pipeline.Pipeline([(<span class="st">"preprocess"</span>, preprocess), (<span class="st">"rf"</span>, ensemble.RandomForestRegressor(n_estimators<span class="op">=</span><span class="dv">500</span>, random_state<span class="op">=</span><span class="dv">646</span>, n_jobs<span class="op">=-</span><span class="dv">1</span>))])</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a><span class="co">#-- Grid Search--</span></span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>grid<span class="op">=</span> {<span class="st">"rf__max_features"</span>: mf_grid}</span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>rf_cv<span class="op">=</span> ms.GridSearchCV(rf, grid, cv<span class="op">=</span><span class="dv">5</span>, scoring<span class="op">=</span><span class="st">"neg_mean_squared_error"</span>, n_jobs<span class="op">=-</span><span class="dv">1</span>, return_train_score<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-9"><a href="#cb38-9" aria-hidden="true" tabindex="-1"></a>rf_cv.fit(x_train, y_train)</span>
+<span id="cb38-10"><a href="#cb38-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-11"><a href="#cb38-11" aria-hidden="true" tabindex="-1"></a><span class="co">#--Best max_features--</span></span>
+<span id="cb38-12"><a href="#cb38-12" aria-hidden="true" tabindex="-1"></a>best_mf<span class="op">=</span> rf_cv.best_params_[<span class="st">"rf__max_features"</span>]</span>
+<span id="cb38-13"><a href="#cb38-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-14"><a href="#cb38-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Best max_features: </span><span class="sc">{</span>best_mf<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Best max_features: 75</code></pre>
+</div>
+</div>
+<div id="1b15faa4" class="cell" data-execution_count="31">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="co">#--results--</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>rf_res<span class="op">=</span> pd.DataFrame(rf_cv.cv_results_)</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>rf_res[<span class="st">"test_mse"</span>]<span class="op">=</span> <span class="op">-</span>rf_res[<span class="st">"mean_test_score"</span>]</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>rf_res[<span class="st">"train_mse"</span>]<span class="op">=</span> <span class="op">-</span>rf_res[<span class="st">"mean_train_score"</span>]</span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>rf_res[[<span class="st">"param_rf__max_features"</span>, <span class="st">"test_mse"</span>, <span class="st">"train_mse"</span>]]</span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a><span class="co">#-- plot--</span></span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">9</span>, <span class="dv">6</span>))</span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>sns.lineplot(data<span class="op">=</span>rf_res, x<span class="op">=</span><span class="st">"param_rf__max_features"</span>, y<span class="op">=</span><span class="st">"test_mse"</span>, marker<span class="op">=</span><span class="st">"x"</span>)</span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>plt.axvline(best_mf, linestyle<span class="op">=</span><span class="st">"--"</span>, label<span class="op">=</span><span class="ss">f"Best max_features= </span><span class="sc">{</span>best_mf<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Random Forest Test Error by max_features"</span>, pad<span class="op">=</span><span class="dv">15</span>)</span>
+<span id="cb40-13"><a href="#cb40-13" aria-hidden="true" tabindex="-1"></a>plt.xlabel(<span class="st">""</span>)</span>
+<span id="cb40-14"><a href="#cb40-14" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="st">"MSE"</span>)</span>
+<span id="cb40-15"><a href="#cb40-15" aria-hidden="true" tabindex="-1"></a>plt.legend()</span>
+<span id="cb40-16"><a href="#cb40-16" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-32-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Although the ames data set contained 78 predictors after dropping variables. The final one hot encoded data had ~225 predictors. The cross validation output 75 as the best value for <code>max_features</code> meaning the Forest model performed best when considering 75 of the 225 features.</p>
+<div id="e39824d1" class="cell" data-execution_count="32">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>rf_pred<span class="op">=</span> rf_cv.predict(x_test)</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>rf_mse<span class="op">=</span> metrics.mean_squared_error(y_test, rf_pred)</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>rf_rmse<span class="op">=</span> np.sqrt(rf_mse)</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Random Forest Test MSE: </span><span class="sc">{</span>rf_mse<span class="sc">:.3f}</span><span class="ss">"</span>)</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Random Forest Test RMSE: </span><span class="sc">{</span>rf_rmse<span class="sc">:.3f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Random Forest Test MSE: 0.019
+Random Forest Test RMSE: 0.139</code></pre>
+</div>
+</div>
+<p>There is an improvement in the MSE compared to the original Trees model.</p>
+<div id="f88614ba" class="cell" data-execution_count="33">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>rf_sp<span class="op">=</span> np.exp(rf_pred)</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>actual_sp<span class="op">=</span> np.exp(y_test)</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>rf_sp_rmse<span class="op">=</span> np.sqrt(metrics.mean_squared_error(actual_sp, rf_sp))</span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Random Forest `saleprice` prediction is off by: $</span><span class="sc">{</span>rf_sp_rmse<span class="sc">:,.2f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Random Forest `saleprice` prediction is off by: $23,896.82</code></pre>
+</div>
+</div>
+<p>The Random Forest predictions of ames house prices are off by about $24k which is a great improvement over the $36k of the original Trees.</p>
+</section>
+<section id="comparing-ridge-regression-and-random-forests" class="level3">
+<h3 class="anchored" data-anchor-id="comparing-ridge-regression-and-random-forests"><strong>Comparing Ridge Regression and Random Forests:</strong></h3>
+<p>Compare the two models in the following two ways. First, did ridge regression have a lower or higher test error than your Random Forest model (I expect Random Forest to outperform, but with good feature engineering the two should be comparable on this dataset)?</p>
+<p>Next, make a <code>partial dependence</code> plot of how the ridge regression model and the random forest model predict the relationship between housing size and sales price (I hope that you have included some of the living area features in your models…). I recommend <code>GrLivArea</code>. Create a grid of <code>GrLivArea</code> values between 0 and 15000.</p>
+<p>Next, loop through each value of <code>GrLivArea</code> in the grid, and clone the training set at each step of the loop. In the cloned training set, replace the real value of ‘GrLivArea’ with the grid value, and predict the log sales price on all the cloned data.</p>
+<p>Then compute the average of the predicted log sales price for each value of the ‘GrLivArea’. Make a plot of the mean predicted log sales price versus <code>GrLivArea</code> for both Random Forest and Ridge Regression. Explain what you observe.</p>
+<blockquote class="blockquote">
+<p>Note: Being aware of this phenomenon is crucial for properly using tree based methods.</p>
+</blockquote>
+</section>
+</section>
+<section id="problem-3-boosting-learning-rate-and-tree-number" class="level2">
+<h2 class="anchored" data-anchor-id="problem-3-boosting-learning-rate-and-tree-number"><strong>Problem 3: Boosting: Learning Rate and Tree Number</strong></h2>
+<p>I strongly recommend using <code>xgb</code> for this exercise. If you have a strong preference to stay within <code>sklearn</code>, you may use <code>HistGradientBoostingRegressor</code>, but it will be more effort to do part (b) properly. Fit a boosted model with the default hyperparameters. What is your average mean squared error and how does it compare to your other models?</p>
+<p>One of the differences between gradient boosted trees and bagging methods like random forest, is that boosted trees can sometimes be more powerful, but are also more sensitive to hyperparameters and prone to overfitting. A fundamental trade-off in hyperparameters is between learning rate (<code>learning_rate</code>) and the number of trees (<code>n_estimators</code>). For three values of the learning rate (pick the default of 0.3, one larger value, and one smaller value), plot the relationship between both training and testing mean-squared error and the number of boosting iterations. Make sure to pass the training and testing dataset as <code>eval_set</code> when you are fitting your <code>xgb</code> model, i.e. <code>eval_set=[(X_train, y_train), (X_test, y_test)]</code>. The evolution of the error is tracked in <code>results[’validation_n’]</code> where corresponds to each validation set. For each learning rate, what is the best value of <code>n_estimators</code> and the corresponding test mean squared error? Note: passing the test set as eval_set is used here for visualization only. See the extra credit to learn how to do this properly with cross-validation.</p>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
